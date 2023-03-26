@@ -12,5 +12,4 @@ pytest_plugins = [
     'tests.plugins.base',
 
     'tests.plugins.identity.user',
-    'tests.plugins.identity.fixtures',
 ]

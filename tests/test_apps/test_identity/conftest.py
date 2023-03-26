@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import pytest
 from django.test import Client
@@ -58,7 +58,7 @@ def registration_data(
 
 
 @pytest.fixture()
-def expected_user_data(registration_data: 'RegistrationData') -> 'UserData':
+def user_data(registration_data: 'RegistrationData') -> 'UserData':
     """We need to simplify registration data to drop password fields.
 
     Basically, it is the same as registration data, but without password fields.
@@ -104,5 +104,28 @@ def logged_in_client(
         password=password,
     )
     client.login(username=user.email, password=password)
+
+    return client
+
+
+@pytest.fixture()
+def user(
+    mimesis_field: 'Field',
+    user_data: 'UserData',
+    django_user_model: User,
+) -> User:
+    """Returns app user."""
+    fields: dict[str, Any] = dict(user_data)
+    fields.update({
+        'password': mimesis_field('password'),
+    })
+
+    return django_user_model.objects.create_user(**fields)
+
+
+@pytest.fixture()
+def user_client(user, client):
+    """Returns logged in client."""
+    client.force_login(user)
 
     return client

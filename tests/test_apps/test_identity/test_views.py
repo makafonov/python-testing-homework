@@ -21,7 +21,7 @@ if TYPE_CHECKING:
 def test_valid_registration(
     client: Client,
     registration_data: 'RegistrationData',
-    expected_user_data: 'UserData',
+    user_data: 'UserData',
     assert_correct_user: 'UserAssertion',
 ) -> None:
     """Test that registration works with valid data."""
@@ -32,7 +32,7 @@ def test_valid_registration(
 
     assert response.status_code == HTTPStatus.FOUND
     assert response.get('Location') == reverse('identity:login')
-    assert_correct_user(registration_data['email'], expected_user_data)
+    assert_correct_user(registration_data['email'], user_data)
 
 
 @pytest.mark.django_db()
@@ -77,8 +77,20 @@ def test_registration_missing_required_field(
 
 @pytest.mark.django_db()
 def test_update_user(
-    registration_data: 'RegistrationData',
-    logged_in_client: Client,
+    user_data,
+    user_client: Client,
     mimesis_field: Field,
 ) -> None:
-    """Test that user can update userinfo."""
+    """Test that user can update info."""
+    first_name = mimesis_field('person.first_name')
+    user_data.update({
+        'first_name': first_name,
+    })
+    response = user_client.post(
+        reverse('identity:user_update'),
+        data=user_data,
+    )
+
+    assert response.status_code == HTTPStatus.FOUND
+    assert response.get('Location') == reverse('identity:user_update')
+    assert User.objects.get(email=user_data['email']).first_name == first_name
