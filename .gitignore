@@ -244,3 +244,6 @@ artifacts/
 
 # ipython:
 .ipython/
+
+.vscode/
+.hypothesis/

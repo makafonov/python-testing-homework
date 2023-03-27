@@ -77,7 +77,7 @@ def test_registration_missing_required_field(
 
 @pytest.mark.django_db()
 def test_update_user(
-    user_data,
+    user_data: 'UserData',
     user_client: Client,
     mimesis_field: Field,
 ) -> None:

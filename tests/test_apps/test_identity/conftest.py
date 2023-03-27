@@ -1,21 +1,21 @@
 from typing import TYPE_CHECKING, Any
 
 import pytest
-from django.test import Client
 from mimesis.schema import Schema
 from typing_extensions import Unpack
 
-from server.apps.identity.models import User
-
 if TYPE_CHECKING:
+    from django.test import Client
     from mimesis.schema import Field
 
+    from server.apps.identity.models import User
     from tests.plugins.identity.user import (
         RegistrationData,
         RegistrationDataFactory,
         UserAssertion,
         UserData,
     )
+
 
 _START_YEAR = 1900
 
@@ -70,11 +70,11 @@ def user_data(registration_data: 'RegistrationData') -> 'UserData':
     }
 
 
-@pytest.fixture(scope='session')
-def assert_correct_user() -> 'UserAssertion':
+@pytest.fixture()
+def assert_correct_user(django_user_model: 'User') -> 'UserAssertion':
     """Returns assertion for user data."""
     def factory(email: str, expected: 'UserData') -> None:
-        user = User.objects.get(email=email)
+        user = django_user_model.objects.get(email=email)
 
         # Special fields:
         assert user.id
@@ -90,30 +90,11 @@ def assert_correct_user() -> 'UserAssertion':
 
 
 @pytest.fixture()
-def logged_in_client(
-    registration_data: 'RegistrationData',
-    client: Client,
-    django_user_model: User,
-) -> Client:
-    """Returns logged in client."""
-    password = registration_data.pop('password1')
-    registration_data.pop('password2')
-
-    user = django_user_model.objects.create_user(
-        **registration_data,
-        password=password,
-    )
-    client.login(username=user.email, password=password)
-
-    return client
-
-
-@pytest.fixture()
 def user(
     mimesis_field: 'Field',
     user_data: 'UserData',
-    django_user_model: User,
-) -> User:
+    django_user_model: 'User',
+) -> 'User':
     """Returns app user."""
     fields: dict[str, Any] = dict(user_data)
     fields.update({
@@ -124,7 +105,7 @@ def user(
 
 
 @pytest.fixture()
-def user_client(user, client):
+def user_client(user: 'User', client: 'Client') -> 'Client':
     """Returns logged in client."""
     client.force_login(user)
 

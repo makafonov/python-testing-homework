@@ -1,9 +1,12 @@
 from http import HTTPStatus
+from typing import TYPE_CHECKING
 
 import pytest
-from django.test import Client
 from django.urls import reverse
 from pytest_django.asserts import assertTemplateUsed
+
+if TYPE_CHECKING:
+    from django.test import Client
 
 
 @pytest.mark.django_db()
@@ -12,7 +15,7 @@ from pytest_django.asserts import assertTemplateUsed
     ('identity:registration', 'identity/pages/registration.html'),
 ])
 def test_pages(
-    client: Client,
+    client: 'Client',
     url: str,
     template: str,
 ) -> None:
@@ -24,9 +27,9 @@ def test_pages(
 
 
 @pytest.mark.django_db()
-def test_user_update_page(logged_in_client: Client) -> None:
+def test_user_update_page(user_client: 'Client') -> None:
     """Test the user update page."""
-    response = logged_in_client.get(reverse('identity:user_update'))
+    response = user_client.get(reverse('identity:user_update'))
 
     assert response.status_code == HTTPStatus.OK
     assertTemplateUsed(
