@@ -9,11 +9,13 @@ from mimesis.schema import Field
 from server.apps.identity.models import User
 
 if TYPE_CHECKING:
-    from tests.plugins.identity.user import (
+    from plugins.identity.user import (
+        ExternalAPIUserResponse,
         RegistrationData,
         RegistrationDataFactory,
         UserAssertion,
         UserData,
+        UserExternalAssertion,
     )
 
 
@@ -21,8 +23,10 @@ if TYPE_CHECKING:
 def test_valid_registration(
     client: Client,
     registration_data: 'RegistrationData',
+    external_api_mock: 'ExternalAPIUserResponse',
     user_data: 'UserData',
     assert_correct_user: 'UserAssertion',
+    assert_correct_external_user: 'UserExternalAssertion',
 ) -> None:
     """Test that registration works with valid data."""
     response = client.post(
@@ -33,6 +37,7 @@ def test_valid_registration(
     assert response.status_code == HTTPStatus.FOUND
     assert response.get('Location') == reverse('identity:login')
     assert_correct_user(registration_data['email'], user_data)
+    assert_correct_external_user(registration_data['email'], external_api_mock)
 
 
 @pytest.mark.django_db()
@@ -89,8 +94,9 @@ def test_update_user(
     response = user_client.post(
         reverse('identity:user_update'),
         data=user_data,
+        follow=True,
     )
 
-    assert response.status_code == HTTPStatus.FOUND
-    assert response.get('Location') == reverse('identity:user_update')
+    assert response.status_code == HTTPStatus.OK
+    assert 'Ваши данные сохранены' in response.content.decode()
     assert User.objects.get(email=user_data['email']).first_name == first_name

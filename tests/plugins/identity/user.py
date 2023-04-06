@@ -3,6 +3,10 @@ from typing import Callable, Protocol, TypedDict, final
 from typing_extensions import TypeAlias, Unpack
 
 UserAssertion: TypeAlias = Callable[[str, 'UserData'], None]
+UserExternalAssertion: TypeAlias = Callable[
+    [str, 'ExternalAPIUserResponse'],
+    None,
+]
 
 
 class UserData(TypedDict, total=False):
@@ -42,3 +46,10 @@ class RegistrationDataFactory(Protocol):  # type: ignore[misc]
         **fields: Unpack[RegistrationData],
     ) -> RegistrationData:
         """Creates the user data."""
+
+
+@final
+class ExternalAPIUserResponse(TypedDict, total=False):
+    """Represents the external API response."""
+
+    id: str

@@ -1,73 +1,21 @@
-from typing import TYPE_CHECKING, Any
+import json
+import re
+from typing import TYPE_CHECKING, Any, Iterator
 
+import httpretty
 import pytest
 from mimesis.schema import Schema
-from typing_extensions import Unpack
 
 if TYPE_CHECKING:
-    from django.test import Client
     from mimesis.schema import Field
-
-    from server.apps.identity.models import User
-    from tests.plugins.identity.user import (
-        RegistrationData,
-        RegistrationDataFactory,
+    from plugins.identity.user import (
+        ExternalAPIUserResponse,
         UserAssertion,
         UserData,
+        UserExternalAssertion,
     )
 
-
-_START_YEAR = 1900
-
-
-@pytest.fixture()
-def registration_data_factory(
-    mimesis_field: 'Field',
-) -> 'RegistrationDataFactory':
-    """Returns factory for fake random registration data."""
-    def factory(**fields: Unpack['RegistrationData']) -> 'RegistrationData':
-        password = mimesis_field('password')  # by default passwords are equal
-        schema = Schema(schema=lambda: {
-            'email': mimesis_field('person.email'),
-            'first_name': mimesis_field('person.first_name'),
-            'last_name': mimesis_field('person.last_name'),
-            'date_of_birth': mimesis_field(
-                'datetime.date',
-                start=_START_YEAR,
-            ),
-            'address': mimesis_field('address.city'),
-            'job_title': mimesis_field('person.occupation'),
-            'phone': mimesis_field('person.telephone'),
-        })
-
-        return {
-            **schema.create(iterations=1)[0],  # type: ignore[misc]
-            **{'password1': password, 'password2': password},
-            **fields,
-        }
-
-    return factory
-
-
-@pytest.fixture()
-def registration_data(
-    registration_data_factory: 'RegistrationDataFactory',
-) -> 'RegistrationData':
-    """Returns random registration data."""
-    return registration_data_factory()
-
-
-@pytest.fixture()
-def user_data(registration_data: 'RegistrationData') -> 'UserData':
-    """We need to simplify registration data to drop password fields.
-
-    Basically, it is the same as registration data, but without password fields.
-    """
-    return {  # type: ignore[return-value]
-        key: value_part
-        for key, value_part in registration_data.items()
-        if not key.startswith('password')
-    }
+    from server.apps.identity.models import User
 
 
 @pytest.fixture()
@@ -90,23 +38,41 @@ def assert_correct_user(django_user_model: 'User') -> 'UserAssertion':
 
 
 @pytest.fixture()
-def user(
-    mimesis_field: 'Field',
-    user_data: 'UserData',
+def assert_correct_external_user(
     django_user_model: 'User',
-) -> 'User':
-    """Returns app user."""
-    fields: dict[str, Any] = dict(user_data)
-    fields.update({
-        'password': mimesis_field('password'),
-    })
+) -> 'UserExternalAssertion':
+    """Returns assertion for external user data."""
+    def factory(email: str, external_api_mock):
+        user = django_user_model.objects.get(email=email)
+        assert user.lead_id == int(external_api_mock['id'])
 
-    return django_user_model.objects.create_user(**fields)
+    return factory
 
 
 @pytest.fixture()
-def user_client(user: 'User', client: 'Client') -> 'Client':
-    """Returns logged in client."""
-    client.force_login(user)
+def external_api_user_response(
+    mimesis_field: 'Field',
+) -> 'ExternalAPIUserResponse':
+    """Create fake external API response for users."""
+    schema = Schema(schema=lambda: {
+        'id': str(mimesis_field('numeric.increment')),
+    })
 
-    return client
+    return schema.create(iterations=1)[0]
+
+
+@pytest.fixture()
+def external_api_mock(
+    external_api_user_response: 'ExternalAPIUserResponse',
+    settings: Any,
+) -> Iterator['ExternalAPIUserResponse']:
+    """Mock external `/users` call."""
+    with httpretty.httprettized():
+        httpretty.register_uri(
+            method=httpretty.POST,
+            body=json.dumps(external_api_user_response),
+            uri=re.compile('{0}.*'.format(settings.PLACEHOLDER_API_URL)),
+        )
+
+        yield external_api_user_response
+        assert httpretty.has_request()
