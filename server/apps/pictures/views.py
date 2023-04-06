@@ -44,10 +44,10 @@ class DashboardView(CreateView[FavouritePicture, FavouritesForm]):
 
     def get_context_data(self, **kwargs: Any) -> Dict[str, Any]:
         """Innject extra context to template rendering."""
-        fetch_puctures = container.instantiate(PicturesFetch)
+        fetch_pictures = container.instantiate(PicturesFetch)
 
         context = super().get_context_data(**kwargs)
-        context['pictures'] = fetch_puctures()  # sync http call, may hang
+        context['pictures'] = fetch_pictures()  # sync http call, may hang
         return context
 
     def get_form_kwargs(self) -> Dict[str, Any]:

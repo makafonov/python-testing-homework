@@ -10,7 +10,7 @@ Docs: https://github.com/mozilla/django-csp
 
 from typing import Tuple
 
-# These settings are overriden during development:
+# These settings are overridden during development:
 CSP_SCRIPT_SRC: Tuple[str, ...] = ("'self'",)
 CSP_IMG_SRC: Tuple[str, ...] = ("'self'", 'https://via.placeholder.com')
 CSP_FONT_SRC: Tuple[str, ...] = ("'self'",)
